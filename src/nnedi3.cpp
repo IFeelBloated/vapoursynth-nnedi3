@@ -87,6 +87,12 @@ extern "C" {
     extern void nnedi3_e0_m16_FMA4(float *s, const int n);
     extern void nnedi3_dotProd_FMA4(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 }
+#elif defined(NNEDI3_ARM)
+// Functions implemented in simd_neon.c
+extern "C" {
+    extern void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d);
+    extern void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+}
 #endif
 
 
@@ -705,7 +711,7 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 
 static void selectFunctions(nnedi3Data *d) {
-#ifdef NNEDI3_X86
+#if defined(NNEDI3_X86) || defined(NNEDI3_ARM)
     int opt = d->opt;
     CPUFeatures cpu;
     getCPUFeatures(&cpu);
@@ -828,7 +834,7 @@ static void selectFunctions(nnedi3Data *d) {
             d->expfunc = e0_m16_C;
         }
 
-#ifdef NNEDI3_X86
+#if defined(NNEDI3_X86)
         if (opt) {
             // evalFunc_0
             d->readPixels = nnedi3_word2float48_SSE2;
@@ -858,6 +864,11 @@ static void selectFunctions(nnedi3Data *d) {
                 if (cpu.fma4)
                     d->expfunc = nnedi3_e0_m16_FMA4;
             }
+        }
+#elif defined(NNEDI3_ARM)
+        if (opt && cpu.neon) {
+            d->computeNetwork0 = computeNetwork0_neon;
+            d->dotProd = dotProd_neon;
         }
 #endif
     }
@@ -1337,7 +1348,7 @@ static void VS_CC nnedi3Create(const VSMap *in, VSMap *out, void *userData, VSCo
     }
 
     d.opt = !!vsapi->propGetInt(in, "opt", 0, &err);
-#ifdef NNEDI3_X86
+#if defined(NNEDI3_X86) || defined(NNEDI3_ARM)
     if (err) {
         d.opt = 1;
     }

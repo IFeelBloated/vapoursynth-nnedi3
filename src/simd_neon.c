@@ -7,7 +7,7 @@ static const uint32x4_t sign_bits_f_zero_l = { 0, 0x7fffffff, 0x7fffffff, 0x7fff
 static const float32x4_t ones_f = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 
-static void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) {
+void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) {
     float32x4_t m0 = { 0.0f, 0.0f, 0.0f, 0.0f };
     float32x4_t m1 = m0;
     float32x4_t m2 = m0;
@@ -112,7 +112,7 @@ static void computeNetwork0_neon(const float *input, const float *weights, uint8
 }
 
 
-static void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd) {
+void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd) {
     for (int i = 0; i < n; i += 4) {
         float32x4_t accum0 = { 0.0f, 0.0f, 0.0f, 0.0f };
         float32x4_t accum1 = accum0;

@@ -25,4 +25,8 @@ libnnedi3_la_SOURCES += src/asm/cpu-a.asm \
 						src/asm/nnedi3.asm
 endif
 
+if NNEDI3_ARM
+libnnedi3_la_SOURCES += src/simd_neon.c
+endif
+
 libnnedi3_la_LDFLAGS = -no-undefined -avoid-version $(PLUGINLDFLAGS)
