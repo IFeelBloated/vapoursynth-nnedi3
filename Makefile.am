@@ -1,6 +1,6 @@
 warning_flags = -Wall -Wextra -Wno-unused-parameter -Wshadow
 common_cflags = -O2 $(MFLAGS) $(warning_flags)
-AM_CFLAGS = $(common_cflags)
+AM_CFLAGS = -std=c99 $(common_cflags)
 AM_CXXFLAGS = -std=c++11 $(common_cflags)
 
 AM_CPPFLAGS = $(VapourSynth_CFLAGS) -DNNEDI3_DATADIR='"$(pkgdatadir)"'
@@ -26,7 +26,13 @@ libnnedi3_la_SOURCES += src/asm/cpu-a.asm \
 endif
 
 if NNEDI3_ARM
-libnnedi3_la_SOURCES += src/simd_neon.c
+noinst_LTLIBRARIES = libneon.la
+
+libneon_la_SOURCES = src/simd_neon.c
+
+libneon_la_CFLAGS = $(AM_CFLAGS) -mfpu=neon
+
+libnnedi3_la_LIBADD = libneon.la
 endif
 
 libnnedi3_la_LDFLAGS = -no-undefined -avoid-version $(PLUGINLDFLAGS)
