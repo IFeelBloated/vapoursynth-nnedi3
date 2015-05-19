@@ -30,7 +30,10 @@ noinst_LTLIBRARIES = libneon.la
 
 libneon_la_SOURCES = src/simd_neon.c
 
-libneon_la_CFLAGS = $(AM_CFLAGS) -mfpu=neon
+# With just -mfpu=neon, clang says
+#    /usr/include/clang/3.5.0/include/arm_neon.h:28:2: error: "NEON support not enabled"
+# "-march=armv7-a" makes it shut up. Hopefully this parameter doesn't screw up anything.
+libneon_la_CFLAGS = $(AM_CFLAGS) -mfpu=neon -march=armv7-a
 
 libnnedi3_la_LIBADD = libneon.la
 endif
