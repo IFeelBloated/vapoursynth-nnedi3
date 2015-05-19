@@ -712,9 +712,14 @@ void shufflePreScrnL2L3(float *wf, float *rf, const int opt)
 
 static void selectFunctions(nnedi3Data *d) {
 #if defined(NNEDI3_X86) || defined(NNEDI3_ARM)
-    int opt = d->opt;
     CPUFeatures cpu;
     getCPUFeatures(&cpu);
+#endif
+
+#if defined(NNEDI3_ARM)
+    if (!cpu.neon)
+        // Must set opt to 0 so the weights don't get shuffled.
+        d->opt = 0;
 #endif
 
     if (d->vi.format->bitsPerSample == 8) {
@@ -759,7 +764,7 @@ static void selectFunctions(nnedi3Data *d) {
         }
 
 #ifdef NNEDI3_X86
-        if (opt) {
+        if (d->opt) {
             // evalFunc_0
             d->processLine0 = processLine0_maybeSSE2;
 
@@ -835,7 +840,7 @@ static void selectFunctions(nnedi3Data *d) {
         }
 
 #if defined(NNEDI3_X86)
-        if (opt) {
+        if (d->opt) {
             // evalFunc_0
             d->readPixels = nnedi3_word2float48_SSE2;
             d->computeNetwork0 = nnedi3_computeNetwork0_SSE2;
@@ -866,7 +871,7 @@ static void selectFunctions(nnedi3Data *d) {
             }
         }
 #elif defined(NNEDI3_ARM)
-        if (opt && cpu.neon) {
+        if (d->opt && cpu.neon) {
             d->computeNetwork0 = computeNetwork0_neon;
             d->dotProd = dotProd_neon;
         }
@@ -1153,8 +1158,6 @@ static void VS_CC nnedi3Init(VSMap *in, VSMap *out, void **instanceData, VSNode 
     d->xdia = xdiaTable[d->nsize];
     d->ydia = ydiaTable[d->nsize];
     d->asize = xdiaTable[d->nsize] * ydiaTable[d->nsize];
-
-    selectFunctions(d);
 
     free(bdata);
 }
@@ -1453,6 +1456,7 @@ static void VS_CC nnedi3Create(const VSMap *in, VSMap *out, void *userData, VSCo
 
     d.max_value = 65535 >> (16 - d.vi.format->bitsPerSample);
 
+    selectFunctions(&d);
 
     data = (nnedi3Data *)malloc(sizeof(d));
     *data = d;
