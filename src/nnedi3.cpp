@@ -90,6 +90,8 @@ extern "C" {
 #elif defined(NNEDI3_ARM)
 // Functions implemented in simd_neon.c
 extern "C" {
+    extern void word2float48_neon(const uint8_t *t8, const int pitch, float *p);
+
     extern void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d);
     extern void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 }
@@ -872,6 +874,7 @@ static void selectFunctions(nnedi3Data *d) {
         }
 #elif defined(NNEDI3_ARM)
         if (d->opt && cpu.neon) {
+            d->readPixels = word2float48_neon;
             d->computeNetwork0 = computeNetwork0_neon;
             d->dotProd = dotProd_neon;
         }
