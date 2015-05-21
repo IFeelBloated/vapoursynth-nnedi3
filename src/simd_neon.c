@@ -7,6 +7,15 @@ static const uint32x4_t sign_bits_f_zero_l = { 0, 0x7fffffff, 0x7fffffff, 0x7fff
 static const float32x4_t ones_f = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 
+// http://stackoverflow.com/questions/6759897/
+static inline __attribute__((always_inline)) float32x4_t reciprocal(float32x4_t x) {
+    float32x4_t recip = vrecpeq_f32(x);
+    recip = vmulq_f32(vrecpsq_f32(x, recip), recip);
+    recip = vmulq_f32(vrecpsq_f32(x, recip), recip);
+    return recip;
+}
+
+
 void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) {
     float32x4_t m0 = { 0.0f, 0.0f, 0.0f, 0.0f };
     float32x4_t m1 = m0;
@@ -45,11 +54,7 @@ void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) 
     m1 = m0;
     m0 = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(m0), sign_bits_f_zero_l));
     m0 = vaddq_f32(m0, ones_f);
-    // http://stackoverflow.com/questions/6759897/
-    float32x4_t recip = vrecpeq_f32(m0);
-    recip = vmulq_f32(vrecpsq_f32(m0, recip), recip);
-    recip = vmulq_f32(vrecpsq_f32(m0, recip), recip);
-    m0 = vmulq_f32(recip, m1);
+    m0 = vmulq_f32(reciprocal(m0), m1);
 
     m1 = vdupq_lane_f32(vget_low_f32(m0), 0);
     m2 = vdupq_lane_f32(vget_low_f32(m0), 1);
@@ -69,10 +74,7 @@ void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) 
     m7 = m1;
     m1 = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(m1), sign_bits_f));
     m1 = vaddq_f32(m1, ones_f);
-    recip = vrecpeq_f32(m1);
-    recip = vmulq_f32(vrecpsq_f32(m1, recip), recip);
-    recip = vmulq_f32(vrecpsq_f32(m1, recip), recip);
-    m7 = vmulq_f32(recip, m7);
+    m7 = vmulq_f32(reciprocal(m1), m7);
 
     m3 = m0;
 
