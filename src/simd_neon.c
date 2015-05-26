@@ -19,16 +19,14 @@ static inline __attribute__((always_inline)) float32x4_t reciprocal(float32x4_t 
 void word2float48_neon(const uint8_t *t8, const int pitch, float *p) {
     const uint16_t *t = (const uint16_t *)t8;
 
-    uint16x4_t zero = { 0, 0, 0, 0 };
-
     for (int i = 0; i < 4; i++) {
-        uint16x4x2_t u1 = vzip_u16(vld1_u16(t), zero);
-        uint16x4x2_t u2 = vzip_u16(vld1_u16(t + 4), zero);
-        uint16x4x2_t u3 = vzip_u16(vld1_u16(t + 8), zero);
+        uint32x4_t u1 = vmovl_u16(vld1_u16(t));
+        uint32x4_t u2 = vmovl_u16(vld1_u16(t + 4));
+        uint32x4_t u3 = vmovl_u16(vld1_u16(t + 8));
 
-        float32x4_t f1 = vcvtq_f32_u32(vreinterpretq_u32_u16(vcombine_u16(u1.val[0], u1.val[1])));
-        float32x4_t f2 = vcvtq_f32_u32(vreinterpretq_u32_u16(vcombine_u16(u2.val[0], u2.val[1])));
-        float32x4_t f3 = vcvtq_f32_u32(vreinterpretq_u32_u16(vcombine_u16(u3.val[0], u3.val[1])));
+        float32x4_t f1 = vcvtq_f32_u32(u1);
+        float32x4_t f2 = vcvtq_f32_u32(u2);
+        float32x4_t f3 = vcvtq_f32_u32(u3);
 
         vst1q_f32(p, f1);
         vst1q_f32(p + 4, f2);
