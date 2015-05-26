@@ -5,6 +5,7 @@
 static const uint32x4_t sign_bits_f = { 0x7fffffff, 0x7fffffff, 0x7fffffff, 0x7fffffff };
 static const uint32x4_t sign_bits_f_zero_l = { 0, 0x7fffffff, 0x7fffffff, 0x7fffffff };
 static const float32x4_t ones_f = { 1.0f, 1.0f, 1.0f, 1.0f };
+static const float32x4_t zeroes_f = { 0.0f, 0.0f, 0.0f, 0.0f };
 
 
 // http://stackoverflow.com/questions/6759897/
@@ -133,6 +134,80 @@ void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d) 
 
     float32x2_t maximum = vmax_f32(vget_low_f32(m0), vget_high_f32(m0));
     d[0] = (vget_lane_f32(maximum, 1) <= vget_lane_f32(maximum, 0));
+}
+
+
+void computeNetwork0new_neon(const float *dataf, const float *weightsf, uint8_t *d) {
+    const int16_t *data = (const int16_t *)dataf;
+    const int16_t *weights = (const int16_t *)weightsf;
+
+    int32x4_t accum0 = { 0, 0, 0, 0 };
+    int32x4_t accum1 = accum0;
+    int32x4_t accum2 = accum0;
+    int32x4_t accum3 = accum0;
+
+    for (int i = 0; i < 128/2; i += 8) {
+        int16x4x2_t d0 = vld2_s16(data + i);
+
+        int16x4x2_t w0 = vld2_s16(weights + i * 4);
+        int16x4x2_t w1 = vld2_s16(weights + i * 4 + 8);
+        int16x4x2_t w2 = vld2_s16(weights + i * 4 + 16);
+        int16x4x2_t w3 = vld2_s16(weights + i * 4 + 24);
+
+        accum0 = vmlal_s16(accum0, d0.val[0], w0.val[0]);
+        accum0 = vmlal_s16(accum0, d0.val[1], w0.val[1]);
+
+        accum1 = vmlal_s16(accum1, d0.val[0], w1.val[0]);
+        accum1 = vmlal_s16(accum1, d0.val[1], w1.val[1]);
+
+        accum2 = vmlal_s16(accum2, d0.val[0], w2.val[0]);
+        accum2 = vmlal_s16(accum2, d0.val[1], w2.val[1]);
+
+        accum3 = vmlal_s16(accum3, d0.val[0], w3.val[0]);
+        accum3 = vmlal_s16(accum3, d0.val[1], w3.val[1]);
+    }
+
+    int32x2_t sum0 = vpadd_s32(vget_low_s32(accum0), vget_high_s32(accum0));
+    int32x2_t sum1 = vpadd_s32(vget_low_s32(accum1), vget_high_s32(accum1));
+    int32x2_t sum2 = vpadd_s32(vget_low_s32(accum2), vget_high_s32(accum2));
+    int32x2_t sum3 = vpadd_s32(vget_low_s32(accum3), vget_high_s32(accum3));
+    sum0 = vpadd_s32(sum0, sum1);
+    sum1 = vpadd_s32(sum2, sum3);
+    int32x4_t sum = vcombine_s32(sum0, sum1);
+
+    float32x4_t m0 = vcvtq_f32_s32(sum);
+
+    m0 = vmulq_f32(m0, vld1q_f32(weightsf + 512/4));
+    m0 = vaddq_f32(m0, vld1q_f32(weightsf + 528/4));
+
+    float32x4_t m1, m2, m3, m4;
+
+    m1 = m0;
+
+    m0 = vreinterpretq_f32_u32(vandq_u32(vreinterpretq_u32_f32(m0), sign_bits_f));
+    m0 = vaddq_f32(m0, ones_f);
+    m0 = vmulq_f32(reciprocal(m0), m1);
+
+    m1 = vdupq_lane_f32(vget_low_f32(m0), 0);
+    m2 = vdupq_lane_f32(vget_low_f32(m0), 1);
+    m3 = vdupq_lane_f32(vget_high_f32(m0), 0);
+    m4 = vdupq_lane_f32(vget_high_f32(m0), 1);
+
+    m1 = vmulq_f32(m1, vld1q_f32(weightsf + 544/4));
+    m2 = vmulq_f32(m2, vld1q_f32(weightsf + 560/4));
+    m3 = vmulq_f32(m3, vld1q_f32(weightsf + 576/4));
+    m4 = vmulq_f32(m4, vld1q_f32(weightsf + 592/4));
+
+    m1 = vaddq_f32(m1, m2);
+    m3 = vaddq_f32(m3, m4);
+    m1 = vaddq_f32(m1, m3);
+    m1 = vaddq_f32(m1, vld1q_f32(weightsf + 608/4));
+
+    uint32x4_t gte = vcgeq_f32(m1, zeroes_f);
+    uint16x4_t gte_u16 = vmovn_u32(gte);
+    uint8x8_t gte_u8 = vmovn_u16(vcombine_u16(gte_u16, vget_low_u16(vreinterpretq_u16_u32(sign_bits_f))));
+    gte_u8 = vshr_n_u8(gte_u8, 7);
+    vst1_lane_u32((uint32_t *)d, vreinterpret_u32_u8(gte_u8), 0);
 }
 
 

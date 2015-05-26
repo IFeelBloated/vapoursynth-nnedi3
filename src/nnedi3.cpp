@@ -93,6 +93,8 @@ extern "C" {
     extern void word2float48_neon(const uint8_t *t8, const int pitch, float *p);
 
     extern void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d);
+    extern void computeNetwork0new_neon(const float *dataf, const float *weightsf, uint8_t *d);
+
     extern void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
 }
 #endif
@@ -765,7 +767,7 @@ static void selectFunctions(nnedi3Data *d) {
             d->expfunc = e0_m16_C;
         }
 
-#ifdef NNEDI3_X86
+#if defined(NNEDI3_X86)
         if (d->opt) {
             // evalFunc_0
             d->processLine0 = processLine0_maybeSSE2;
@@ -814,6 +816,28 @@ static void selectFunctions(nnedi3Data *d) {
                 if (cpu.fma4)
                     d->expfunc = nnedi3_e0_m16_FMA4;
             }
+        }
+#elif defined(NNEDI3_ARM)
+        if (d->opt && cpu.neon) {
+            if (d->pscrn < 2) { // original prescreener
+                if (d->fapprox & 1) { // int16 dot products
+                    //d->readPixels = nnedi3_byte2word48_SSE2;
+                    //d->computeNetwork0 = nnedi3_computeNetwork0_i16_SSE2;
+                } else {
+                    //d->readPixels = nnedi3_byte2float48_SSE2;
+                    d->computeNetwork0 = computeNetwork0_neon;
+                }
+            } else { // new prescreener
+                // only int16 dot products
+                //d->readPixels = nnedi3_byte2word64_SSE2;
+                d->computeNetwork0 = computeNetwork0new_neon;
+            }
+
+            // evalFunc_1
+            if (d->fapprox & 2) // use int16 dot products
+                //d->dotProd = nnedi3_dotProd_i16_SSE2;
+            else // use float dot products
+                d->dotProd = dotProd_neon;
         }
 #endif
     } else {
