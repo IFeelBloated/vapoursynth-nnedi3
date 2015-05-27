@@ -106,7 +106,7 @@ void word2float48_neon(const uint8_t *t8, const int pitch, float *p) {
         vst1q_f32(p + 4, f2);
         vst1q_f32(p + 8, f3);
 
-        t += pitch; // it was already halved
+        t += pitch * 2; // it was already halved
         p += 12;
     }
 }
