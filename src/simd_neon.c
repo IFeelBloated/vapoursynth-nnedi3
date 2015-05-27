@@ -61,15 +61,15 @@ void byte2float48_neon(const uint8_t *t, const int pitch, float *p) {
     uint16x8_t m0, m1, m2, m3, m4, m5;
 
     m0 = vmovl_u8(vld1_u8(t));
-    m1 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + 8), vreinterpret_u32_u8(m1), 0)));
-    m1 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + pitch * 2), vreinterpret_u32_u8(m1), 1)));
+    m1 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + 8), vreinterpret_u32_u16(m1), 0)));
+    m1 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + pitch * 2), vreinterpret_u32_u16(m1), 1)));
     m2 = vmovl_u8(vld1_u8(t + pitch * 2 + 4));
 
     t += pitch * 4;
 
     m3 = vmovl_u8(vld1_u8(t));
-    m4 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + 8), vreinterpret_u32_u8(m4), 0)));
-    m4 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + pitch * 2), vreinterpret_u32_u8(m4), 1)));
+    m4 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + 8), vreinterpret_u32_u16(m4), 0)));
+    m4 = vmovl_u8(vreinterpret_u8_u32(vld1_lane_u32((const uint32_t *)(t + pitch * 2), vreinterpret_u32_u16(m4), 1)));
     m5 = vmovl_u8(vld1_u8(t + pitch * 2 + 4));
 
     vst1q_f32(p, vcvtq_f32_u32(vmovl_u16(vget_low_u16(m0))));
