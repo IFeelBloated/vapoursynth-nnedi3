@@ -96,6 +96,7 @@ extern "C" {
     extern void computeNetwork0new_neon(const float *dataf, const float *weightsf, uint8_t *d);
 
     extern void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
+    extern void dotProd_i16_neon(const float *dataf, const float *weightsf, float *vals, const int n, const int len, const float *istd);
 }
 #endif
 
@@ -835,7 +836,7 @@ static void selectFunctions(nnedi3Data *d) {
 
             // evalFunc_1
             if (d->fapprox & 2) // use int16 dot products
-                //d->dotProd = nnedi3_dotProd_i16_SSE2;
+                d->dotProd = dotProd_i16_neon;
             else // use float dot products
                 d->dotProd = dotProd_neon;
         }

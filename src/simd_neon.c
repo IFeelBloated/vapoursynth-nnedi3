@@ -245,16 +245,59 @@ void dotProd_neon(const float *data, const float *weights, float *vals, const in
         sum1 = vpadd_f32(sum2, sum3);
         float32x4_t sum = vcombine_f32(sum0, sum1);
         
+        sum = vmulq_n_f32(sum, istd[0]);
+        sum = vaddq_f32(sum, vld1q_f32(weights + n*len + i));
         vst1q_f32(vals + i, sum);
     }
+}
 
-    // XXX this should be in the loop above
-    // the sum shouldn't be stored only to be loaded again here
+
+void dotProd_i16_neon(const float *dataf, const float *weightsf, float *vals, const int n, const int len, const float *istd) {
+    const int16_t *data = (const int16_t *)dataf;
+    const int16_t *weights = (const int16_t *)weightsf;
+    weightsf += n * len / 2; // sizeof(float) / sizeof(int16_t)
+
     for (int i = 0; i < n; i += 4) {
-        float32x4_t val = vld1q_f32(vals + i);
-        float32x4_t weight = vld1q_f32(weights + i);
+        int32x4_t accum0 = { 0, 0, 0, 0 };
+        int32x4_t accum1 = accum0;
+        int32x4_t accum2 = accum0;
+        int32x4_t accum3 = accum0;
+
+        for (int j = 0; j < len; j += 8) {
+            int16x4x2_t d0 = vld2_s16(data + j);
+
+            int16x4x2_t w0 = vld2_s16(weights);
+            int16x4x2_t w1 = vld2_s16(weights + 8);
+            int16x4x2_t w2 = vld2_s16(weights + 16);
+            int16x4x2_t w3 = vld2_s16(weights + 24);
+
+            accum0 = vmlal_s16(accum0, d0.val[0], w0.val[0]);
+            accum0 = vmlal_s16(accum0, d0.val[1], w0.val[1]);
+
+            accum1 = vmlal_s16(accum1, d0.val[0], w1.val[0]);
+            accum1 = vmlal_s16(accum1, d0.val[1], w1.val[1]);
+
+            accum2 = vmlal_s16(accum2, d0.val[0], w2.val[0]);
+            accum2 = vmlal_s16(accum2, d0.val[1], w2.val[1]);
+
+            accum3 = vmlal_s16(accum3, d0.val[0], w3.val[0]);
+            accum3 = vmlal_s16(accum3, d0.val[1], w3.val[1]);
+
+            weights += 32;
+        }
+
+        int32x2_t sum0 = vpadd_s32(vget_low_s32(accum0), vget_high_s32(accum0));
+        int32x2_t sum1 = vpadd_s32(vget_low_s32(accum1), vget_high_s32(accum1));
+        int32x2_t sum2 = vpadd_s32(vget_low_s32(accum2), vget_high_s32(accum2));
+        int32x2_t sum3 = vpadd_s32(vget_low_s32(accum3), vget_high_s32(accum3));
+        sum0 = vpadd_s32(sum0, sum1);
+        sum1 = vpadd_s32(sum2, sum3);
+        int32x4_t sum = vcombine_s32(sum0, sum1);
+
+        float32x4_t val = vcvtq_f32_s32(sum);
+        val = vmulq_f32(val, vld1q_f32(weightsf + i*2));
         val = vmulq_n_f32(val, istd[0]);
-        val = vaddq_f32(val, weight);
+        val = vaddq_f32(val, vld1q_f32(weightsf + i*2 + 4));
         vst1q_f32(vals + i, val);
     }
 }
