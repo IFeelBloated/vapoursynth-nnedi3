@@ -53,7 +53,7 @@ static std::wstring utf16_from_bytes(const std::string &str) {
 #define max(a, b)  (((a) > (b)) ? (a) : (b))
 
 
-#ifdef NNEDI3_X86
+#if defined(NNEDI3_X86)
 // Functions implemented in nnedi3.asm
 extern "C" {
     extern void nnedi3_byte2float48_SSE2(const uint8_t *t, const int pitch, float *p);
@@ -90,9 +90,13 @@ extern "C" {
 #elif defined(NNEDI3_ARM)
 // Functions implemented in simd_neon.c
 extern "C" {
+    extern void byte2word48_neon(const uint8_t *t, const int pitch, float *pf);
+    extern void byte2word64_neon(const uint8_t *t, const int pitch, float *pf);
+    extern void byte2float48_neon(const uint8_t *t, const int pitch, float *p);
     extern void word2float48_neon(const uint8_t *t8, const int pitch, float *p);
 
     extern void computeNetwork0_neon(const float *input, const float *weights, uint8_t *d);
+    extern void computeNetwork0_i16_neon(const float *inputf, const float *weightsf, uint8_t *d);
     extern void computeNetwork0new_neon(const float *dataf, const float *weightsf, uint8_t *d);
 
     extern void dotProd_neon(const float *data, const float *weights, float *vals, const int n, const int len, const float *istd);
@@ -822,15 +826,15 @@ static void selectFunctions(nnedi3Data *d) {
         if (d->opt && cpu.neon) {
             if (d->pscrn < 2) { // original prescreener
                 if (d->fapprox & 1) { // int16 dot products
-                    //d->readPixels = nnedi3_byte2word48_SSE2;
-                    //d->computeNetwork0 = nnedi3_computeNetwork0_i16_SSE2;
+                    d->readPixels = byte2word48_neon;
+                    d->computeNetwork0 = computeNetwork0_i16_neon;
                 } else {
-                    //d->readPixels = nnedi3_byte2float48_SSE2;
+                    d->readPixels = byte2float48_neon;
                     d->computeNetwork0 = computeNetwork0_neon;
                 }
             } else { // new prescreener
                 // only int16 dot products
-                //d->readPixels = nnedi3_byte2word64_SSE2;
+                d->readPixels = byte2word64_neon;
                 d->computeNetwork0 = computeNetwork0new_neon;
             }
 
